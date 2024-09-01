@@ -16,26 +16,20 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Cache Docker layers
-      uses: docker/cache-action@v2
-      with:
-        path: |
-          /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
     - name: Build and push Docker image
-      uses: docker/build-push-action@v3
-      with:
-        context: .
-        push: true
-        tags: ghcr.io/${{ github.repository_owner }}/arnaqueoupas:latest
-        cache-from: type=gha,scope=buildx
-        cache-to: type=gha,mode=max,scope=buildx
-
-    - name: Deploy to GitHub Packages
+      env:
+        EMAIL_USER: ${{ secrets.EMAIL_USER }}
+        EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
+        IMAP_SERVER: ${{ secrets.IMAP_SERVER }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
       run: |
-        echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-        docker tag ghcr.io/${{ github.repository_owner }}/arnaqueoupas:latest ghcr.io/${{ github.repository_owner }}/arnaqueoupas:latest
-        docker push ghcr.io/${{ github.repository_owner }}/arnaqueoupas:latest
+        echo "Building Docker image..."
+        docker build . -t ghcr.io/${{ github.repository_owner }}/email-checker:latest
+        echo "Running Docker container..."
+        docker run -e EMAIL_USER="${{ secrets.EMAIL_USER }}" \
+                   -e EMAIL_PASS="${{ secrets.EMAIL_PASS }}" \
+                   -e SMTP_SERVER="${{ secrets.SMTP_SERVER }}" \
+                   -e IMAP_SERVER="${{ secrets.IMAP_SERVER }}" \
+                   -e OPENAI_API_KEY="${{ secrets.OPENAI_API_KEY }}" \
+                   ghcr.io/${{ github.repository_owner }}/email-checker:latest
